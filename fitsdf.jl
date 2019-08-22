@@ -1,6 +1,11 @@
 using FITSIO
 import DataFrames
 
+function fitsdf(fn::String, hdu::Int; cols=nothing)
+    FITS(fn) do hdus
+        DataFrame(hdus[hdu], cols=cols)
+    end
+end
 function DataFrames.DataFrame(hdu::TableHDU; cols=nothing) :: DataFrame
     df = DataFrame()
     collist = cols == nothing ? FITSIO.colnames(hdu) : cols

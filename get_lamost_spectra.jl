@@ -2,8 +2,9 @@ using FITSIO
 using JLD2
 using FileIO
 using Interpolations
+using Statistics: mean
 
-function download_lamost_spectra(obsids::Vector, dir="LAMOST_spectra")
+function download_lamost_spectra(obsids::Vector, dir="LAMOST_spectra"; verbose=true)
     fns = readdir(dir)
     downloaded_obsids = Set([parse(Int, split(fn, '?')[1])
                              for fn in fns if fn[end-6:end] == "?token="])
@@ -12,13 +13,17 @@ function download_lamost_spectra(obsids::Vector, dir="LAMOST_spectra")
     for obsid in obsids
         if !(obsid in downloaded_obsids)
             url = "http://dr4.lamost.org/./spectrum/fits/$(obsid)?token="
-            run(`wget -P $(dir) $url`)
+            if verbose
+                run(`wget -P $(dir) $url`)
+            else
+                run(`wget -q -P $(dir) $url`)
+            end
         end
     end
 end
 
 function load_lamost_spectrum(obsid::Integer; dir="LAMOST_spectra", 
-                              wl_grid=load("wl_grid.jld2")["wl_grid"], L=50)
+                              wl_grid=load("wl_grid.jld2")["wl_grid"], L=100)
     hdu = FITS("$(dir)/$(obsid)?token=")[1]
     header = read_header(hdu)
     data = read(hdu)
@@ -33,10 +38,10 @@ function load_lamost_spectrum(obsid::Integer; dir="LAMOST_spectra",
         ivar = data[:, 2]
     end
     if L == 0
-        return wl, flux, ivar
+        continuum = mean(flux)
+    else
+        continuum = calculate_continuum(wl, flux, ivar, L=L)
     end
-
-    continuum = calculate_continuum(wl, flux, ivar, L=L)
     flux ./= continuum
     ivar .*= continuum.^2
 
@@ -44,9 +49,9 @@ function load_lamost_spectrum(obsid::Integer; dir="LAMOST_spectra",
 end
 
 function smoothing_kernel(wl, wl0, L) 
-    exp(- (((wl-wl0)/(L^2))^2) / 2)
+    exp(- (((wl-wl0)/L)^2) / 2)
 end
-function calculate_continuum(wls, fluxes, ivars; L=50, window=3L)
+function calculate_continuum(wls, fluxes, ivars; L=100, window=3L)
     map(zip(wls, fluxes, ivars)) do triple
         wl, flux, ivar = triple
         indices = wl-window .< wls .< wl+window

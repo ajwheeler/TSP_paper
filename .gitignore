@@ -1,0 +1,7 @@
+.DS_Store
+.ipynb_checkpoints/
+GALAH_spectra/
+LAMOST_spectra/
+Manifest.toml
+__pycache__/
+

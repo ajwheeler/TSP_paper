@@ -5,8 +5,8 @@ rsync get_lamost_spectra.jl moto:NNspectra
 rsync model.jl moto:NNspectra
 rsync one_tenth_of_lamost.csv moto:NNspectra
 rsync nano_LAMOST.csv moto:NNspectra
-rsync LAMOST_top_100_snr.csv moto:NNspectra
-rsync LAMOST_top_300_snr.csv moto:NNspectra
-rsync LAMOST_top_1000_snr.csv moto:NNspectra
+rsync top_SNR_DR2.csv moto:NNspectra
+rsync random_DR2.csv moto:NNspectra
+rsync distributed_DR2.csv moto:NNspectra
 rsync wl_grid.jld2 moto:NNspectra
 rsync Project.toml moto:NNspectra

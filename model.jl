@@ -34,3 +34,33 @@ function calculate_weights(F::Matrix{Fl}, S::Matrix{Fl},
     res = optimize(objective, w_init, Newton(), autodiff=:forward)
     res.minimizer
 end
+
+function model_comparison(D, E, masked_wls, line, width)
+    #construct model matrix M
+    ϕ(x, μ, σ) = exp(-1/2 * (x-μ)^2/σ^2) #gaussian kernel
+    n = length(masked_wls)
+    M = zeros(2 + n, n)
+    M[1, :] = ϕ.(masked_wls, line, width)
+    M[1, :] ./= sqrt(sum(M[1, :].^2))
+    M[2, :] .= sqrt(1/n)
+    for i in 3:(2+n)
+        M[i, i-2] = 1.
+    end
+
+    #TODO: how does this work?
+    l1 = M.^2 * (1 ./ E)
+    l2 = M * (D./E)
+    loss = @. -l2^2 / l1
+
+    losses = collect(eachcol(loss))
+    isline = argmin.(losses) .== 1
+    amplitude = first.(collect(eachcol(l2 ./ l1)))
+
+    N = length(isline)
+    delta_chi2 = Vector(undef, N)
+    for i in 1:N
+        delta_chi2[i] = isline[i] ? minimum(losses[i][2:end]) - losses[i][1] : NaN
+    end
+    
+    isline, losses, amplitude, delta_chi2
+end

@@ -4,7 +4,7 @@ using FileIO
 using Interpolations
 using Statistics: mean
 
-function download_lamost_spectra(obsids::Vector, dir="LAMOST_spectra"; verbose=true)
+function download_lamost_spectra(obsids, dir="LAMOST_spectra"; verbose=true)
     fns = readdir(dir)
     downloaded_obsids = Set([parse(Int, split(fn, '?')[1])
                              for fn in fns if fn[end-6:end] == "?token="])

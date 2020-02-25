@@ -22,25 +22,10 @@ export JULIA_DEPOT_PATH="$TMPDIR:$JULIA_DEPOT_PATH"
 CAT_FILE=one_tenth_of_lamost.csv
 DATA_DIR=/moto/astro/users/ajw2207/LAMOST_spectra
 
-OUTDIR=/moto/astro/users/ajw2207/NNspectra/distributed_topsnr_test
-TRAINING_SET=distributed_top_SNR.csv
+OUTDIR=/moto/astro/users/ajw2207/NNspectra/distributed_topsnr_10000_test
+TRAINING_SET=distributed_top_SNR_DR4_10000.csv
 mkdir -p $OUTDIR
 time julia -p 24 --compiled-modules=no deploy.jl $CAT_FILE $TRAINING_SET $DATA_DIR $OUTDIR 6 $SLURM_ARRAY_TASK_ID $N_JOBS
-
-#OUTDIR=/moto/astro/users/ajw2207/NNspectra/topsnr_test
-#TRAINING_SET=top_SNR.csv
-#mkdir -p $OUTDIR
-#time julia -p 24 --compiled-modules=no deploy.jl $CAT_FILE $TRAINING_SET $DATA_DIR $OUTDIR 6 $SLURM_ARRAY_TASK_ID $N_JOBS
-#
-#OUTDIR=/moto/astro/users/ajw2207/NNspectra/random_test
-#TRAINING_SET=random.csv
-#mkdir -p $OUTDIR
-#time julia -p 24 --compiled-modules=no deploy.jl $CAT_FILE $TRAINING_SET $DATA_DIR $OUTDIR 6 $SLURM_ARRAY_TASK_ID $N_JOBS
-#
-#OUTDIR=/moto/astro/users/ajw2207/NNspectra/distributed_test
-#TRAINING_SET=distributed.csv
-#mkdir -p $OUTDIR
-#time julia -p 24 --compiled-modules=no deploy.jl $CAT_FILE $TRAINING_SET $DATA_DIR $OUTDIR 6 $SLURM_ARRAY_TASK_ID $N_JOBS
 
 echo node $SLURM_ARRAY_TASK_ID finished
                                     

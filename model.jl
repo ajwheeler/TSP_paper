@@ -11,6 +11,7 @@ spectral_dist(f1, s1, f2, s2) = sum(@. (f1-f2)^2/(s1^2 + s2^2))
 """
 function calculate_weights(F::Matrix{Fl}, f::Vector{Fl}, 
                            σ::Vector{Fl}) where Fl <: AbstractFloat
+    @assert (npix = length(f)) == length(σ) == size(F, 1)
     invΣ = inv(Diagonal(σ))
     (transpose(F) * invΣ * F) \ (transpose(F)  * invΣ * f)
 end

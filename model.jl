@@ -15,6 +15,27 @@ function find_neighbors(flux, err, F, S, k)
         partialsortperm(dists, 1:k)
 end
 
+function project_onto_local_manifold(F::Matrix, f::Vector, ivar::Vector, mask, q::Int) 
+    #center coordinates
+    μ = mean(F, dims=1) 
+    F = (F .- μ)[1:end-1, :] # (k-1 x p), drop one neighboring spectra, 
+                             # since it's redundant after centering
+    f = f - μ[:]             # don't use the .-= opperator, it mutates F
+   
+    # eigendecomposition of N x N matrix F F' (not p x p matrix F' F)
+    eivals, eivecs = eigen(F * F')       # (k-1) x (k-1)
+    eispec = F' * eivecs[:, end-q+1:end] #convert N-eigenvectors to p-eigenvectors (eigenspectra)
+
+    #we could normalize the eigenspectra, but it's not necessary
+    #PCnorm = sqrt.(eivals[end-q+1:end]) 
+    #eispec = PCs ./ PCnorm' #normalize eigenspectra (p x q)
+    
+    invΣ = diagm(ivar[.! mask])
+    E = eispec[.! mask, :]
+    β = (E' * invΣ * E) \ (E' * invΣ * f[.! mask] )
+    eispec * β + μ[:]
+end
+
 """
 - `F` is the (npix x K) flux matrix
 - `S` is a (npix x K) matrix containing the uncertainties on F.

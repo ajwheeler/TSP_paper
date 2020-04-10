@@ -1,6 +1,19 @@
 using LinearAlgebra, Optim
 
+"""error-weighted euclidean distance (between two spectra)"""
 spectral_dist(f1, s1, f2, s2) = sum(@. (f1-f2)^2/(s1^2 + s2^2))
+
+"""
+find the k columns of (`F`,`S`) that are clossest to (`flux`, `err`).
+Returns an array of k `Int`s, indices into (`F`, `S`).
+This function does not mask any spectral features for you.  Do that beforehand.
+"""
+function find_neighbors(flux, err, F, S, k)
+        dists = map(1:size(F, 2)) do j
+            spectral_dist(flux[.! line_mask], err[.! line_mask], F[.! line_mask, j], S[.! line_mask, j])
+        end
+        partialsortperm(dists, 1:k)
+end
 
 """
 - `F` is the (npix x K) flux matrix
@@ -12,7 +25,7 @@ spectral_dist(f1, s1, f2, s2) = sum(@. (f1-f2)^2/(s1^2 + s2^2))
 function calculate_weights(F::Matrix{Fl}, f::Vector{Fl}, 
                            σ::Vector{Fl}) where Fl <: AbstractFloat
     @assert (npix = length(f)) == length(σ) == size(F, 1)
-    invΣ = inv(Diagonal(σ))
+    invΣ = inv(Diagonal(σ.^2))
     (transpose(F) * invΣ * F) \ (transpose(F)  * invΣ * f)
 end
 function calculate_weights(F::Matrix{Fl}, S::Matrix{Fl}, 

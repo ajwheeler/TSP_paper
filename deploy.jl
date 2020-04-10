@@ -47,7 +47,6 @@ else
 end
 println("inferring labels for star_ids in $row_range")
 
-
 #now get to work calculating scaled equivalent widths
 inferred_values = pmap(star_ids[row_range]) do obsid
     #choose mask. TODO set this from command line and don't repeat this for every spectrum
@@ -56,15 +55,13 @@ inferred_values = pmap(star_ids[row_range]) do obsid
     line_mask = li_air - Δλ .< wl_grid .< li_air + Δλ
     try
         _, flux, ivar = load_lamost_spectrum(obsid, dir=datadir, wl_grid=wl_grid)
+        #TODO take ivar instead of sigma!
         err = ivar.^(-5f-1) #make sure err is made of Float32's
-        #calculate spectral distances
-        dists = map(1:length(tr_ids)) do j
-            spectral_dist(flux[.! line_mask], err[.! line_mask], F[.! line_mask, j], S[.! line_mask, j])
-        end
-        neighbors = partialsortperm(dists, 1:k)
+        neighbors = find_neighbors(flux[.! line_mask], err[.! line_mask], 
+                                   F[.! line_mask, :], S[.! line_mask, :], k)
         w = calculate_weights(F[.! line_mask, neighbors], flux[.! line_mask], err[.! line_mask])
         best_fit_chi2 = sum(((F[.! line_mask, neighbors]*w - flux[.! line_mask]) ./ err[.! line_mask]).^2)
-        obsid, (F[line_mask, neighbors] * w - flux[line_mask]), err[line_mask], neighbors, w, best_fit_chi2
+        obsid, (F[line_mask, neighbors] * w - flux[line_mask]), err[line_mask], neighbors, w, dists[neighbors], best_fit_chi2
     catch err
         println(err)
         println("\nskipping obsid $(obsid)")
@@ -79,6 +76,7 @@ df = DataFrame(obsid         = first.(inferred_values),
                err           = (r->r[3]).(inferred_values),
                neighbors     = (row -> tr_ids[row[4]]).(inferred_values),
                weights       = (r->r[5]).(inferred_values),
+               dists         = (r->r[6]).(inferred_values),
                best_fit_chi2 = last.(inferred_values))
 
 #CSV.write("$outdir/$(jobindex).csv", df)

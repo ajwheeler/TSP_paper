@@ -12,7 +12,7 @@ function download_lamost_spectra(obsids, dir="LAMOST_spectra"; verbose=true)
     println("of $(length(obsids)) spectra, $(length(obsids) - s) need to be downloaded")
     for obsid in obsids
         if !(obsid in downloaded_obsids)
-            url = "http://dr4.lamost.org/./spectrum/fits/$(obsid)?token="
+            url = "http://dr5.lamost.org/./spectrum/fits/$(obsid)?token="
             if verbose
                 run(`wget -P $(dir) $url`)
             else
@@ -22,7 +22,7 @@ function download_lamost_spectra(obsids, dir="LAMOST_spectra"; verbose=true)
     end
 end
 
-function load_lamost_spectrum(obsid::Integer; dir="LAMOST_spectra", 
+function load_lamost_spectrum(obsid::Integer; dir="LAMOST_spectra", rectify=true,
                               wl_grid=load("wl_grid.jld2")["wl_grid"], L=100)
     hdu = FITS("$(dir)/$(obsid)?token=")[1]
     header = read_header(hdu)
@@ -37,13 +37,19 @@ function load_lamost_spectrum(obsid::Integer; dir="LAMOST_spectra",
         flux = data[:, 1]
         ivar = data[:, 2]
     end
-    if L == 0
-        continuum = mean(flux)
+    if rectify
+        if L == 0
+            continuum = mean(flux)
+        else
+            continuum = calculate_continuum(wl, flux, ivar, L=L)
+        end
+        flux ./= continuum
+        ivar .*= continuum.^2
     else
-        continuum = calculate_continuum(wl, flux, ivar, L=L)
+        m = median(flux)
+        flux ./= m
+        ivar .*= m^2
     end
-    flux ./= continuum
-    ivar .*= continuum.^2
 
     return Float32.(wl), Float32.(flux), Float32.(ivar)
 end

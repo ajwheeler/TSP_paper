@@ -10,7 +10,7 @@ This function does not mask any spectral features for you.  Do that beforehand.
 """
 function find_neighbors(flux, err, F, S, k)
         dists = map(1:size(F, 2)) do j
-            spectral_dist(flux[.! line_mask], err[.! line_mask], F[.! line_mask, j], S[.! line_mask, j])
+            spectral_dist(flux, err, F[:, j], S[:, j])
         end
         partialsortperm(dists, 1:k)
 end

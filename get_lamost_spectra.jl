@@ -32,8 +32,9 @@ function load_lamost_spectrum(obsid::Integer; dir="LAMOST_spectra", rectify=true
     wl = data[:, 3] .- data[:, 3].*header["Z"]
     if wl_grid != nothing
         wl_grid = load("wl_grid.jld2")["wl_grid"]
-        flux = (LinearInterpolation(wl, data[:, 1])).(wl_grid)
-        ivar = (LinearInterpolation(wl, data[:, 2])).(wl_grid)
+        flux = LinearInterpolation(wl, data[:, 1], 
+                                   extrapolation_bc=Interpolations.Flat()).(wl_grid)
+        ivar = LinearInterpolation(wl, data[:, 2], extrapolation_bc=0.0).(wl_grid)
         wl = wl_grid
     else
         flux = data[:, 1]

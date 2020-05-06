@@ -8,7 +8,7 @@ np.set_printoptions(precision=2)
 t = Table(Table.read(sys.argv[1], memmap=True)[1:10])
 todel = []
 for col in t.columns:
-    if col in ['neighbors', 'weights']:
+    if col in ['neighbors']:
         t[col] = [[round(cc, 4) for cc in c] for c in t[col]]
     if col in ['diff', 'err', 'loss']:
         todel.append(col)

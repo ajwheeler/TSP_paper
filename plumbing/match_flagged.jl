@@ -1,5 +1,4 @@
-using DataFrames, CSV
-include("../fitsdf.jl")
+using DataFrames, CSV, FITSIO, FITSTables
 
 df = fitsdf(ARGS[1], 2)
 df = df[df.isline .& (df.amplitude .> 0) .& (df.delta_chi2.> 50), :]

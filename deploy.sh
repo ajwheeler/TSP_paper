@@ -19,13 +19,13 @@ mkdir "$TMPDIR/compiled"
 #will happen there and not interfere with other jobs
 export JULIA_DEPOT_PATH="$TMPDIR:$JULIA_DEPOT_PATH" 
 
-CAT_FILE=one_tenth_of_lamost.csv
-DATA_DIR=/moto/astro/users/ajw2207/LAMOST_spectra
+CAT_FILE=one_tenth_of_lamost_dr5.csv
+DATA_DIR=/moto/astro/users/ajw2207/LAMOST_dr5v3_spectra
 
-OUTDIR=/moto/astro/users/ajw2207/NNspectra/distributed_topsnr_10000_test
-TRAINING_SET=distributed_top_SNR_DR4_10000.csv
+OUTDIR=/moto/astro/users/ajw2207/NNspectra/random_30000_test
+TRAINING_SET=random_30000.csv
 mkdir -p $OUTDIR
-time julia -p 24 --compiled-modules=no deploy.jl $CAT_FILE $TRAINING_SET $DATA_DIR $OUTDIR 6 $SLURM_ARRAY_TASK_ID $N_JOBS
+time julia -p 24 --compiled-modules=no deploy.jl $CAT_FILE $TRAINING_SET $DATA_DIR $OUTDIR 150 50 $SLURM_ARRAY_TASK_ID $N_JOBS
 
 echo node $SLURM_ARRAY_TASK_ID finished
                                     

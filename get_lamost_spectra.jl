@@ -28,7 +28,6 @@ function load_lamost_spectrum(obsid::Integer; dir="LAMOST_spectra", rectify=true
         [1]
         read_header(f[1]), read(f[1])
     end
-
     wl = data[:, 3] .- data[:, 3].*header["Z"]
     if wl_grid != nothing
         wl_grid = load("wl_grid.jld2")["wl_grid"]
@@ -40,7 +39,6 @@ function load_lamost_spectrum(obsid::Integer; dir="LAMOST_spectra", rectify=true
         flux = data[:, 1]
         ivar = data[:, 2]
     end
-
     if rectify
         if L == 0
             continuum = mean(flux)
@@ -54,13 +52,11 @@ function load_lamost_spectrum(obsid::Integer; dir="LAMOST_spectra", rectify=true
         flux ./= m
         ivar .*= m^2
     end
-
     if clip
         badpix = @. (! (0 < flux < 2)) | (ivar < 4)
         flux[badpix] .= 1.
         ivar[badpix] .= 0.
     end
-
     return Float32.(wl), Float32.(flux), Float32.(ivar)
 end
 

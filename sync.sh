@@ -1,11 +1,2 @@
 #! /bin/bash
-rsync deploy.jl moto:NNspectra
-rsync deploy.sh moto:NNspectra
-rsync get_lamost_spectra.jl moto:NNspectra
-rsync model.jl moto:NNspectra
-rsync one_tenth_of_lamost.csv moto:NNspectra
-rsync one_tenth_of_lamost_dr5.csv moto:NNspectra
-rsync nano_LAMOST.csv moto:NNspectra
-rsync random_30000.csv moto:NNspectra
-rsync wl_grid.jld2 moto:NNspectra
-rsync Project.toml moto:NNspectra
+rsync deploy.jl deploy.sh get_lamost_spectra.jl model.jl one_tenth_of_lamost_dr5.csv random_30000.csv wl_grid.jld2 Project.toml moto:NNspectra

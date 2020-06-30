@@ -14,7 +14,9 @@ li_vac = air_to_vac(li_air)
 line_mask = li_air - Δλ .< wl_grid .< li_air + Δλ
 ;
 
-println("doing model comparison...")
-@time df.isline, df.loss, df.EEW, df.delta_chi2 = model_comparison(D, P, wl_grid[line_mask], li_vac, li_air/3600)
+println("doing matched filtering...")
+@time df.isline, df.loss, df.EEW, df.EEW_err = model_comparison(D, P, wl_grid[line_mask], li_vac, li_vac/3600)
 
-write_to_fits(prod(vcat(split(ARGS[1], ".")[1:end-2], ".classified.fits")), df)
+outfn = prod(vcat(split(ARGS[1], ".")[1:end-2], ".classified.fits"))
+println("writing to $outfn")
+write_to_fits(outfn, df)

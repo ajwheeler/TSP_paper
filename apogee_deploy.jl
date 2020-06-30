@@ -1,15 +1,16 @@
+#using Pkg; Pkg.activate("."); Pkg.resolve(); Pkg.instantiate()
 using Distributed
 @everywhere begin
-    using SharedArrays
+    #using Pkg
+    #Pkg.activate(".")
     include("model.jl")
     include("get_lamost_spectra.jl")
+    using SharedArrays
 end
-include("li_lines.jl")
-
-using CSV, JLD2, FileIO, DataFrames
+using CSV, JLD2, FileIO, DataFrames, Serialization
 
 #CLI args
-obsids_fn = ARGS[1]
+input_fn  = ARGS[1]
 tr_set_fn = ARGS[2]
 datadir   = ARGS[3]
 outdir    = ARGS[4]
@@ -20,30 +21,34 @@ njobs     = parse(Int, ARGS[8])
 
 println("job $jobindex of $njobs")
 println("training set: $tr_set_fn")
-println("deploy set: $obsids_fn")
+println("deploy set: $input_fn")
 println("$k nearest neighbors, q=$q")
 
-
 #load the training data
-tr_ids = CSV.read(tr_set_fn)[!, :obsid] #
-npix = length(wls)
+tr_cat = CSV.read(tr_set_fn)[!, :obsid] #
+wls = Float32.(deserialize("wl_grid_apogee.jdb"))
+wlmask = 15900 .< wls .< 16400
+npix = sum(wlmask)
 wl_grid = SharedArray{Float32}(npix)
 wl_grid .= wls
 Ft = SharedArray{Float32}((npix, length(tr_ids))) #F'
-for (i,tr_id) in enumerate(tr_ids)
-    _, flux, ivar = load_lamost_spectrum(tr_id, dir=datadir, wl_grid=wl_grid)
-    Ft[:, i] .= flux[.! subordinate_line_mask]
+for row in eachrow(tr_cat)
+    flux, ivar = load_apogee_spectrum(row)
+    Ft[:, i] .= flux
 end
 
-#load star_ids to deploy on, determine which are this job's
-star_ids = CSV.read(obsids_fn)[!, :obsid] 
-jobsize = Int(ceil(length(star_ids)/njobs))
+incat = FITS(f->DataFrame(f[2]), input_fn)
+jobsize = Int(ceil(size(incat, 1)/njobs))
 if jobindex == njobs
-    row_range = (jobindex-1)*jobsize+1 : length(star_ids)
+    row_range = (jobindex-1)*jobsize+1 : size(incat, 1)
 else
     row_range = (jobindex-1)*jobsize+1 : jobindex*jobsize 
 end
-println("inferring labels for star_ids in $row_range")
+println("inferring labels for rows in $row_range")
+
+Δλ = 7 
+li_air = 6707.85
+line_mask = li_air - Δλ .< wl_grid .< li_air + Δλ
 
 inferred_values = pmap(star_ids[row_range]) do obsid
     try

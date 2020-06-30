@@ -1,11 +1,9 @@
 using DataFrames, CSV, FITSIO, FITSTables
 
-df = fitsdf(ARGS[1], 2)
-df = df[df.isline .& (df.amplitude .> 0) .& (df.delta_chi2.> 50), :]
+df = FITS(DataFrame ∘ last, ARGS[1])
+df = df[df.isline .& (df.EEW .> 0.2) .& (df.EEW_err .< 0.2/3), :]
 
-lamost = fitsdf("../cats/LAMOST-dr5-v3-stellar.fits.gz", 2)[:, [:designation, :obsid]]
-lamostxgaia = fitsdf("../cats/LAMOST-dr5v3-designations-coords-gaia.fits")
-df = join(df, lamost, kind=:left, on=:obsid)
+lamostxgaia = FITS(DataFrame ∘ last, "../cats/LAMOST-dr5v3-designations-coords-gaia.fits")
 df = join(df, lamostxgaia, kind=:left, on=:designation)
 
 CSV.write(prod(vcat(split(ARGS[1], ".")[1:end-2], ".flagged.csv")), df)

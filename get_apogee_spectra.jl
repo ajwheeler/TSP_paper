@@ -3,41 +3,57 @@ using JLD2
 using FileIO
 using Interpolations
 
-function gen_filename(res, apid)
-    filename = "aspcapStar-r8-$res-$apid.fits"
+
+function readdir_recursively(dir)
+    allfiles = String[]
+    for (root, dirs, files) in walkdir(dir)
+        # global contents # if in REPL
+        [push!(allfiles, f) for f in files]
+    end
+    allfiles
 end
 
-function download_spectra(df::DataFrame; dir="downloaded_spectra") 
-    download_spectra(df.aspcap_version, df.results_version, df.location_id, 
-                     df.apogee_id, dir=dir)
-end
-function download_spectra(aspcap_versions::Vector{String}, results_versions::Vector{String},
-                          locids::Vector{I}, apids::Vector{String};
-                          dir="downloaded_spectra") where I <: Integer
-    @assert (nspectra = length(aspcap_versions)) == length(results_versions) == 
-            length(locids) == length(apids)
-    downloaded = Set(readdir(dir))
+genfn(id, APRED_VERS) = "aspcapStar-$APRED_VERS-$id.fits"
+genpath(scope, field, id, APRED_VERS) = joinpath(scope, field, genfn(id, APRED_VERS))
 
-    s = sum([fn in downloaded for fn in gen_filename.(results_versions, apids)])
+download_apogee_spectra(df::DataFrame; kwargs...) = download_apogee_spectra(df.TELESCOPE, df.FIELD, df.APOGEE_ID; kwargs...)
+function download_apogee_spectra(scopes, fields, ids;
+                          dir="APOGEE_spectra", APRED_VERS="r12"
+                         ) where I <: Integer
+    @assert (nspectra = length(scopes)) == length(fields) == length(ids)
+    downloaded = Set(readdir_recursively(dir))
+
+    mask = [!(fn in downloaded) for fn in genfn.(ids, APRED_VERS)]
+    s = sum(.! mask)
     println("of $nspectra spectra, $(nspectra - s) need to be downloaded")
 
-    for (asp, res, loc, apid) in zip(aspcap_versions, results_versions, locids, apids)
-        if !(gen_filename(res, apid) in downloaded)
-            filename = "aspcapStar-r8-$res-$apid.fits"
-            url = "https://data.sdss.org/sas/dr14/apogee/spectro/redux/r8/" *
-                   "stars/$asp/$res/$loc/$filename"
-            run(`wget -nv -P $(dir) $url`) 
+
+    downloaded = map(zip(scopes[mask], fields[mask], ids[mask])) do (scope, field, id)
+        url = "https://data.sdss.org/sas/dr16/apogee/spectro/aspcap/$APRED_VERS/l33/" * 
+                genpath(scope, field, id, APRED_VERS)
+        try
+            run(`wget -nv -r -nH --cut-dirs=9 -P $dir $url`)
+            true
+        catch
+            false
         end
     end
+    mask[mask] .&= .! downloaded
+    .! mask
 end
 
-function load_spectrum(row::DataFrameRow; dir="downloaded_spectra") 
-    load_spectrum(row.results_version, row.apogee_id, dir=dir)
-end
-function load_spectrum(res, apid; dir="downloaded_spectra")
-    FITS("$dir/$(gen_filename(res, apid))") do hdus
-        flux = read(hdus[2])[:, 1] #"pixel-based" weighting
-        err = read(hdus[3])[:, 1]
+load_apogee_spectrum(row::DataFrameRow; kwargs...) = load_apogee_spectrum(row.TELESCOPE, row.FIELD, row.APOGEE_ID; kwargs...)
+load_apogee_spectrum(id; kwargs...) = load_apogee_spectrum(nothing, nothing, id; kwargs...)
+function load_apogee_spectrum(scope, field, id; dir="APOGEE_spectra", APRED_VERS="r12", 
+                              nested=false)
+    if nested
+        path = joinpath(dir, genpath(scope, field, id, APRES_VERS))
+    else
+        path = joinpath(dir, genfn(id, APRED_VERS))
+    end
+    FITS(path) do hdus
+        flux = read(hdus[2]) #"pixel-based" weighting
+        err = read(hdus[3])
         return flux, err
     end
 end

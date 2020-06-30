@@ -12,12 +12,10 @@ function find_neighbors(flux, F, k)
         #dists = sum((F .- flux').^2 ./ (err'.^2 .+ S.^2) .+ log.(err'.^2 .+ S.^2), dims=2)[:]
         dists = sum((flux .- F').^2 , dims=1)[:]
         dists[dists .== 0.0] .= Inf #don't let spectra neighbor themselves
-        #perm = Vector{Int}(undef, size(dists))
-        #partialsortperm!(perm, view(dists, :), 1:k)
         partialsortperm(dists, 1:k)
 end
 
-function project_onto_local_manifold(F::AbstractMatrix, f::Vector, 
+function project_onto_tangent_space(F::AbstractMatrix, f::Vector, 
                                      ivar::Vector, mask, q::Int) 
     μ = mean(F, dims=1)      # center coordinates
     F = (F .- μ)[1:end-1, :] # F :: (k-1 x p), drop one neighboring spectra
@@ -35,6 +33,11 @@ function project_onto_local_manifold(F::AbstractMatrix, f::Vector,
     invΣ = diagm(ivar[.! mask])
     E = eispec[.! mask, :]
     β = (E' * invΣ * E) \ (E' * invΣ * f[.! mask] )
+
+    #variance matrix of f_pred
+    #mE = eispec[mask, :]
+    #Cfpred = mE * (E' * invΣ * E) \ mE'
+
     eispec * β + μ[:]
 end
 
@@ -51,16 +54,17 @@ function predict_spectral_range(f, ivar, F, P, k, q, mask; whiten=false)
     @assert length(f) == length(ivar) == size(F, 2)
 
     #masked_data_present = all(P[:, mask] .!= 0, dims=2)
-    neighbors = find_neighbors(view(f,.! mask), view(F, :, .!mask), k)
+    goodrefs = .! any(1.0 .== (F[:, mask]), dims=2)[:]
+    neighbors = find_neighbors(view(f,.! mask), view(F, goodrefs, .!mask), k)
 
     #goodpix = any(P[neighbors, :] .== 0, dims=1)
     if whiten
         @assert size(F) == size(P)
         error = [mean(col[col .!= 0.0].^(-1/2)) for col in eachcol(P[neighbors, :])] 
-        pf = project_onto_local_manifold((F[neighbors, :] .- 1)./error', (f.-1)./error, 
+        pf = project_onto_tangent_space((F[goodrefs, :][neighbors, :] .- 1)./error', (f.-1)./error, 
                                          ivar.*error.^2, mask, q) .* error .+ 1
     else
-        pf = project_onto_local_manifold(F[neighbors, :], f, ivar, mask, q)
+        pf = project_onto_tangent_space(F[goodrefs, :][neighbors, :], f, ivar, mask, q)
     end
     pf
 end
@@ -69,29 +73,20 @@ function model_comparison(D, P, masked_wls, line, width)
     #construct model matrix M
     n = length(masked_wls)
     M = zeros(2 + n, n)
-    Δλ = (masked_wls[end] - masked_wls[1]) / (length(masked_wls) -1 )
     ϕ(x, μ, σ) = exp(-1/2 * (x-μ)^2/σ^2) / sqrt(2π) / σ #gaussian kernel
-    M[1, :] = ϕ.(masked_wls, line, width) ./ Δλ # normalized s.t. EW = 1
+    M[1, :] = ϕ.(masked_wls, line, width) 
     M[2, :] .= 1.0
     for i in 3:(2+n)
         M[i, i-2] = 1.
     end
 
-    #TODO: how does this work?
     l1 = M.^2 * P
     l2 = M * (D .* P)
     loss = @. -l2^2 / l1
-
     losses = collect(eachcol(loss))
     isline = argmin.(losses) .== 1
-    amplitude = first.(collect(eachcol(l2 ./ l1)))
-    amplitude[.! isline] .= NaN
+    EEW = l2[1, :] ./ l1[1, :]
+    EEW_err = 1 ./ sqrt.(l1[1, :])
 
-    N = length(isline)
-    delta_chi2 = Vector(undef, N)
-    for i in 1:N
-        delta_chi2[i] = isline[i] ? minimum(losses[i][2:end]) - losses[i][1] : NaN
-    end
-    
-    isline, losses, amplitude, delta_chi2
+    isline, losses, EEW, EEW_err
 end

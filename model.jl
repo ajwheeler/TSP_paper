@@ -69,17 +69,32 @@ function predict_spectral_range(f, ivar, F, P, k, q, mask; whiten=false)
     pf
 end
 
-function model_comparison(D, P, masked_wls, line, width)
-    #construct model matrix M
+"""
+Return a matrix whose first row is the line profile, and whose following 
+rows are contaminant models.
+"""
+function model_matrix(masked_wls, line, width)
     n = length(masked_wls)
     M = zeros(2 + n, n)
     ϕ(x, μ, σ) = exp(-1/2 * (x-μ)^2/σ^2) / sqrt(2π) / σ #gaussian kernel
     M[1, :] = ϕ.(masked_wls, line, width) 
-    M[2, :] .= 1.0
+    M[2, :] .= 1.0/n
     for i in 3:(2+n)
         M[i, i-2] = 1.
     end
+    M
+end
 
+"""
+Given
+ - `D`, whose rows are the residuals in the censored region
+ - `P`, whose rows are the inverse-variance vectors of the residuals
+ - `masked_wls`, the wavelengths of the masked pixels
+ - `line`, the central wavelength of the line
+ - `width`, the line width
+"""
+function model_comparison(D, P, masked_wls, line, width)
+    M = model_matrix(masked_wls, line, width)
     l1 = M.^2 * P
     l2 = M * (D .* P)
     loss = @. -l2^2 / l1

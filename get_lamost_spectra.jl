@@ -23,14 +23,13 @@ function download_lamost_spectra(obsids, dir="LAMOST_spectra"; verbose=true)
 end
 
 function load_lamost_spectrum(obsid::Integer; dir="LAMOST_spectra", rectify=true,
-                              wl_grid=load("wl_grid.jld2")["wl_grid"], L=100, clip=true)
+                              wl_grid=load("wl_grid.jld2")["wl_grid"], L=25, clip=true)
     header, data = FITS("$(dir)/$(obsid)?token=") do f
         [1]
         read_header(f[1]), read(f[1])
     end
     wl = data[:, 3] .- data[:, 3].*header["Z"]
     if wl_grid != nothing
-        wl_grid = load("wl_grid.jld2")["wl_grid"]
         flux = LinearInterpolation(wl, data[:, 1], 
                                    extrapolation_bc=Interpolations.Flat()).(wl_grid)
         ivar = LinearInterpolation(wl, data[:, 2], extrapolation_bc=0.0).(wl_grid)

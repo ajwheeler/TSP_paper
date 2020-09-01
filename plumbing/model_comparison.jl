@@ -7,15 +7,12 @@ df = fitsdf(ARGS[1], 2)
 D = reduce(hcat, df.diff) 
 P = reduce(hcat, df.ivar)
 
-wl_grid = load("wl_grid.jld2")["wl_grid"]
-Δλ = 7                                                                                    
-li_air = 6707.85
-li_vac = air_to_vac(li_air)
-line_mask = li_air - Δλ .< wl_grid .< li_air + Δλ
-;
+include("../lines_and_grid.jl")
 
 println("doing matched filtering...")
 @time df.isline, df.loss, df.EEW, df.EEW_err = model_comparison(D, P, wl_grid[line_mask], li_vac, li_vac/3600)
+
+df.enriched = df.isline .& (df.EEW .> 0.15) .& (df.EEW_err .< 0.05)
 
 outfn = prod(vcat(split(ARGS[1], ".")[1:end-2], ".classified.fits"))
 println("writing to $outfn")

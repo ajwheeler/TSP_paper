@@ -10,7 +10,7 @@ todel = []
 for col in t.columns:
     if col in ['neighbors']:
         t[col] = [[round(cc, 4) for cc in c] for c in t[col]]
-    if col in ['diff', 'err', 'loss']:
+    if col in ['diff', 'ivar']:
         todel.append(col)
 for col in todel:
     del(t[col])

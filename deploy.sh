@@ -5,8 +5,8 @@
 #SBATCH --account=astro       # The account name for the job.
 #SBATCH --job-name=NNspectra  # The job name.
 #SBATCH --time=10:00:00       # The time the job will take to run 
-#SBATCH --array 1-20
-N_JOBS=20
+#SBATCH --array 1-99
+N_JOBS=99
 
 module load julia
 
@@ -19,13 +19,12 @@ mkdir "$TMPDIR/compiled"
 #will happen there and not interfere with other jobs
 export JULIA_DEPOT_PATH="$TMPDIR:$JULIA_DEPOT_PATH" 
 
-CAT_FILE=one_tenth_of_lamost_dr5.csv
+CAT_FILE=lamost_dr5v3_all_obsids.csv
 DATA_DIR=/moto/astro/users/ajw2207/LAMOST_dr5v3_spectra
 
-OUTDIR=/moto/astro/users/ajw2207/NNspectra/random_30000_test
+OUTDIR=/moto/astro/users/ajw2207/NNspectra/random_30000_all_k1000
 TRAINING_SET=random_30000.csv
 mkdir -p $OUTDIR
-time julia -p 24 --compiled-modules=no deploy.jl $CAT_FILE $TRAINING_SET $DATA_DIR $OUTDIR 150 50 $SLURM_ARRAY_TASK_ID $N_JOBS
+time julia -p 24 --compiled-modules=no deploy.jl $CAT_FILE $TRAINING_SET $DATA_DIR $OUTDIR 1000 50 $SLURM_ARRAY_TASK_ID $N_JOBS
 
 echo node $SLURM_ARRAY_TASK_ID finished
-                                    

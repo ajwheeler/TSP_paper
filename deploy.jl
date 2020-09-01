@@ -4,7 +4,7 @@ using Distributed
     include("model.jl")
     include("get_lamost_spectra.jl")
 end
-include("li_lines.jl")
+include("lines_and_grid.jl")
 
 using CSV, JLD2, FileIO, DataFrames
 
@@ -20,19 +20,16 @@ njobs     = parse(Int, ARGS[8])
 
 println("job $jobindex of $njobs")
 println("training set: $tr_set_fn")
-println("deploy set: $obsids_fn")
-println("$k nearest neighbors, q=$q")
-
+println("deploy on: $obsids_fn")
+println("k=$k, q=$q")
 
 #load the training data
 tr_ids = CSV.read(tr_set_fn)[!, :obsid] #
-npix = length(wls)
-wl_grid = SharedArray{Float32}(npix)
-wl_grid .= wls
+npix = length(wl_grid)
 Ft = SharedArray{Float32}((npix, length(tr_ids))) #F'
 for (i,tr_id) in enumerate(tr_ids)
     _, flux, ivar = load_lamost_spectrum(tr_id, dir=datadir, wl_grid=wl_grid)
-    Ft[:, i] .= flux[.! subordinate_line_mask]
+    Ft[:, i] .= flux
 end
 
 #load star_ids to deploy on, determine which are this job's
@@ -48,7 +45,7 @@ println("inferring labels for star_ids in $row_range")
 inferred_values = pmap(star_ids[row_range]) do obsid
     try
         _, f, ivar = load_lamost_spectrum(obsid, dir=datadir, wl_grid=wl_grid)
-        #pass F as adjoint object (e.g. transpose(Ft)) so that it's in row-major form
+        #pass F as adjoint object (i.e. transpose(Ft)) so that it's in row-major form
         pf = predict_spectral_range(f, ivar, Ft', nothing, k, q, line_mask; whiten=false)
         best_fit_chi2 = sum((pf[.! line_mask] - f[.! line_mask]).^2 .* ivar[.! line_mask])
         obsid, (pf[line_mask] - f[line_mask]), ivar[line_mask], best_fit_chi2
@@ -63,7 +60,8 @@ inferred_values = inferred_values[.! ismissing.(inferred_values)]
 
 df = DataFrame(obsid         = first.(inferred_values),
                diff          = (r->r[2]).(inferred_values),
-               ivar           = (r->r[3]).(inferred_values),
+               ivar          = (r->r[3]).(inferred_values),
                best_fit_chi2 = last.(inferred_values))
 
+mkpath(outdir)
 save("$(outdir)/$(jobindex).jld2", "out", df)
